@@ -26,62 +26,59 @@ async fn process(mut client: tokio::net::TcpStream) -> Result<(), Box<dyn Error>
     let mut server = tokio::net::TcpStream::connect("127.0.0.1:3000").await?;
     println!("Connected to backend server at 127.0.0.1:3000");
 
-    let mut buf = vec![0u8; 1024]; // Buffer for reading data
+    let mut client_buf = vec![0u8; 1024]; // Buffer for reading client data
+    let mut server_buf = vec![0u8; 1024]; // Buffer for reading server data
     loop {
-
-    
-        // Read data from the client
-        match client.read(&mut buf).await {
-            Ok(0) => {
-                // Client closed the connection
-                println!("Client closed the connection");
-                break;
-            }
-            Ok(n) => {
-                // Client sent data, forward it to the backend
-                println!("Client message: {}", String::from_utf8_lossy(&buf[..n]));
-                if let Err(e) = server.write_all(&buf[..n]).await {
-                    println!("Error forwarding data to backend: {}", e);
+        tokio::select! {
+            // Read data from the client and forward to the backend
+            client_read = client.read(&mut client_buf) => {
+                match client_read {
+                    Ok(0) => {
+                        // Client closed the connection
+                        println!("Client closed the connection");
+                        server.shutdown().await.unwrap();
+                        break;
+                    }
+                    Ok(n) => {
+                        // Client sent data, forward it to the backend
+                        println!("Client message: {}", String::from_utf8_lossy(&client_buf[..n]));
+                        if let Err(e) = server.write_all(&client_buf[..n]).await {
+                            println!("Error forwarding data to backend: {}", e);
+                        }
+                        println!("Forwarded {} bytes from client to backend", n);
+                    }
+                    Err(e) => {
+                        // Error reading from the client
+                        println!("Error reading from client: {}", e);
+                        break;
+                    }
                 }
-                println!("Forwarded {} bytes from client to backend", n);
-            }
-            Err(e) => {
-                // Error reading from the client
-                println!("Error reading from client: {}", e);
-                break;
+            },
+            // Read data from the backend and forward to the client
+            server_read = server.read(&mut server_buf) => {
+                match server_read {
+                    Ok(0) => {
+                        // Server closed the connection , ideally in TCPStream, read/recv will return 0 on EOF/closed connection
+                        println!("Server closed the connection");
+                        client.shutdown().await.unwrap();
+                        break;
+                    }
+                    Ok(n) => {
+                        // Backend sent data, forward it to the client
+                        println!("Server message: {}", String::from_utf8_lossy(&server_buf[..n]));
+                        if let Err(e) = client.write_all(&server_buf[..n]).await {
+                            println!("Error forwarding data to client: {}", e);
+                        }
+                        println!("Forwarded {} bytes from backend to client", n);
+                    }
+                    Err(e) => {
+                        // Error reading from the backend
+                        println!("Error reading from backend: {}", e);
+                    }
+                }
             }
         }
+    }
 
-        // Read the response from the backend
-        match server.read(&mut buf).await {
-            Ok(0) => {
-                // Server closed the connection
-                println!("Server closed the connection");
-                break;
-            }
-            Ok(n) => {
-                // Backend sent data, forward it to the client
-                println!("Server message: {}", String::from_utf8_lossy(&buf[..n]));
-                if let Err(e) = client.write_all(&buf[..n]).await {
-                    println!("Error forwarding data to client: {}", e);
-                }
-                println!("Forwarded {} bytes from backend to client", n);
-            
-            }
-            Err(e) => {
-                // Error reading from the backend
-                println!("Error reading from backend: {}", e);
-            }
-        }
-
-        if let Err(e) = client.shutdown().await {  
-            println!("Error shutting down client connection: {}", e);
-        };
-
-        if let Err(e) = server.shutdown().await {  
-            println!("Error shutting down server connection: {}", e);
-        };
-}
-
-Ok(())
+    Ok(())
 }
