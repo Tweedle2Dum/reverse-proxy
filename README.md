@@ -57,3 +57,59 @@ Create a `config.json` file in the root directory with the following structure:
     "192.168.1.11"
   ]
 }
+```
+1. The `LISTENER_PORT` determines where the proxy will listen for incoming connections.
+2. The `BACKEND_PORTS` field defines the backend servers that the proxy will load balance traffic between.
+3. The `ACCESS_CONTROL_LIST` restricts which client IP addresses are allowed to connect to the proxy.
+
+# TODO
+
+This document outlines the tasks and improvements planned for the L4 Proxy project.
+
+---
+
+## General Improvements
+
+- [ ] **Improve Configuration Handling**:
+  - Validate the configuration file at runtime for required fields and correct formats.
+
+- [ ] **Logging**:
+  - Replace `println!` with `tokio-tracing` for structured and efficient logging.
+  - Add logging levels (e.g., INFO, DEBUG, ERROR) for better observability.
+
+- [ ] **Code Quality**:
+  - Refactor code to follow idiomatic Rust practices (e.g., use camelCase for struct fields).
+
+---
+
+## Features
+
+- [ ] **Testing**:
+  - Add unit tests for:
+    - Access Control List (ACL) validation.
+    - Load balancing logic (e.g., backend selection).
+  - Add integration tests to validate:
+    - Successful forwarding of client traffic to backend servers.
+    - ACL enforcement (e.g., denied connections).
+  - Add benchmark tests to measure:
+    - Concurrency and throughput under various conditions.
+    - Resource utilization during high traffic.
+
+- [ ] **Environment Support**:
+  - Optionally support reading configuration from environment variables for containerization (although for now `config.json` is being used).
+
+- [ ] **Error Handling**:
+  - Improve error handling across all modules with meaningful messages.
+  - Ensure graceful shutdown on critical errors.
+
+---
+
+## Benchmarking
+
+- [ ] Develop a benchmarking suite to:
+  - Test throughput under various concurrency levels.
+  - Measure CPU and memory usage during sustained traffic.
+
+- [ ] Document results for different scenarios (e.g., high client load, many backends).
+
+
