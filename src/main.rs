@@ -18,16 +18,16 @@ async fn main() {
     println!("Loaded Config: {:?}", config);
 
     let backends: Vec<String> = config
-        .BACKEND_PORTS
+        .backend_ports
         .iter()
         .map(|backend| backend.to_string())
         .collect();
     let load_balancer = Arc::new(Mutex::new(LoadBalancer::new(backends)));
     // Start the TCP listener
-    let listener = tokio::net::TcpListener::bind(&config.LISTENER_PORT)
+    let listener = tokio::net::TcpListener::bind(&config.listener_port)
         .await
         .unwrap();
-    println!("Listening on {}", config.LISTENER_PORT);
+    println!("Listening on {}", config.listener_port);
 
     loop {
         let (mut client_connection, address) = listener.accept().await.unwrap();
